@@ -1,14 +1,15 @@
-import os
 from dotenv import load_dotenv
 from openai import OpenAI
+from enum import Enum
 
 
 load_dotenv()
 
-client = OpenAI(
-    # This is the default and can be omitted
-    api_key=os.environ.get("OPENAI_API_KEY"),
-)
+client = OpenAI()
+
+
+class Tools(Enum):
+    WEB_SEARCH = "web_search_preview"
 
 
 class Llm:
@@ -16,18 +17,22 @@ class Llm:
         self.client = client
         self.instructions = ""
         self.model = model
+        self.tools = None
 
     def set_instructions(self, instructions: str):
         self.instructions = instructions
 
-    def ask(self, input: str):
+    def set_tools(self):
+        self.tools = [{"type": Tools.WEB_SEARCH.value}]
+
+    def ask(self, input):
         if not input:
             print("must provide a question")
             return
-        response = self.client.responses.create(
+
+        return self.client.responses.create(
             model=self.model,
             instructions=self.instructions,
+            tools=self.tools,
             input=input,
         )
-
-        print(response.output_text)

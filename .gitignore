@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 .vscode/
 
+db.json
+
 # C extensions
 *.so
 
