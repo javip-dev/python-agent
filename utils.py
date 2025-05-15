@@ -1,13 +1,23 @@
 from enum import Enum
 import json
-from typing import List
 import uuid
 from datetime import datetime
-from openai.types.responses.response_output_item import ResponseOutputItem
-from openai.types.responses.response_output_message import ResponseOutputMessage
+import questionary
+from pydantic import BaseModel
+
+# from openai.types.responses.response_output_item import ResponseOutputItem
+# from openai.types.responses.response_output_message import ResponseOutputMessage
 
 
 DB = "db.json"
+NEW_THREAD = "New thread"
+THREADS = "threads"
+MESSAGES = "messages"
+
+
+class Thread(BaseModel):
+    id: str
+    name: str
 
 
 class ROLES(Enum):
@@ -15,7 +25,7 @@ class ROLES(Enum):
     ASSISTANT = "assistant"
 
 
-def add_metada(ai_msg: str, role: ROLES):
+def add_metada(ai_msg: str, role: ROLES, thread_id):
     now = datetime.now()
     ts = int(now.timestamp())
     return {
@@ -23,6 +33,7 @@ def add_metada(ai_msg: str, role: ROLES):
         "content": ai_msg,
         "created_at": ts,
         "id": str(uuid.uuid4()),
+        "thread_id": thread_id,
     }
 
 
@@ -33,75 +44,77 @@ def remove_metada(ai_msg):
     }
 
 
-def user_msg(msg: str):
-    save_db(msg, ROLES.USER)
-    return get_db()
+def user_msg(msg: str, thread_id: str):
+    message = add_metada(msg, ROLES.USER, thread_id)
+    save_message(message)
+    return get_messages(thread_id)
 
 
-def assistant_msg(msg: str):
-    save_db(msg, ROLES.ASSISTANT)
+def assistant_msg(msg: str, thread_id: str):
+    message = add_metada(msg, ROLES.ASSISTANT, thread_id)
+    save_message(message)
 
 
 def get_db():
     with open(DB, "r") as file:
-        data = json.load(file)
-    return list(map(remove_metada, data.get("messages")))
+        db = json.load(file)
+    return db
 
 
-def save_db(msg: str, role: ROLES):
-    with open(DB, "r") as file:
-        data = json.load(file)
-    history = list(data.get("messages"))
-    message = add_metada(msg, role)
-    history.append(message)
-    database = {"messages": history}
+def save_db(db):
     with open(DB, "w") as outfile:
-        json_string = json.dumps(database, indent=2)
+        json_string = json.dumps(db, indent=2)
         outfile.write(json_string)
 
 
-# def store_msg(
-#     output_text: str,
-# ):
-#     with open(DB, "r") as file:
-#         data = json.load(file)
-#     history = list(data.get("messages"))
-#     history.append(add_metada(output_text))
-#     database = {"messages": history}
-
-#     with open(DB, "w") as outfile:
-#         json_string = json.dumps(database, indent=2)
-#         outfile.write(json_string)
+def get_threads():
+    return get_db().get(THREADS)
 
 
-# from openai import OpenAI
+def get_messages(thread_id):
+    messages = list(
+        filter(lambda msg: msg["thread_id"] == thread_id, get_db().get(MESSAGES))
+    )
+    messages.sort(key=lambda m: m["created_at"])
+    return list(map(remove_metada, messages))
 
-# client = OpenAI()
 
-# history = [
-#     {
-#         "role": "user",
-#         "content": "tell me a joke"
-#     }
-# ]
+def save_thread(thread: Thread):
+    db = get_db()
+    threads = db.get(THREADS)
+    threads.append(thread.__dict__)
+    db[THREADS] = threads
+    save_db(db)
 
-# response = client.responses.create(
-#     model="gpt-4o-mini",
-#     input=history,
-#     store=False
-# )
 
-# print(response.output_text)
+def save_message(message):
+    db = get_db()
+    messages = db.get(MESSAGES)
+    messages.append(message)
+    db[MESSAGES] = messages
+    save_db(db)
 
-# # Add the response to the conversation
-# history += [{"role": el.role, "content": el.content} for el in response.output]
 
-# history.append({ "role": "user", "content": "tell me another" })
+def save_new_thread(name: str) -> Thread:
+    new_t = {"name": name, "id": str(uuid.uuid4())}
+    thread: Thread = Thread(**new_t)
+    save_thread(thread)
+    return thread
 
-# second_response = client.responses.create(
-#     model="gpt-4o-mini",
-#     input=history,
-#     store=False
-# )
 
-# print(second_response.output_text)
+def get_thread_id() -> str:
+    threads = get_threads()
+    thread_names = [NEW_THREAD] + [thread["name"] for thread in threads]
+    t_name = questionary.select("Chose a thread", choices=thread_names).ask()
+    if t_name == NEW_THREAD:
+        name = input("Chose a name for the new thread ")
+        thread = save_new_thread(name)
+        return thread.id
+    thread = next((thread for thread in threads if thread["name"] == t_name))
+    return thread["id"]
+
+
+def print_output(txt: str):
+    print("------------------")
+    print(txt)
+    print("------------------")

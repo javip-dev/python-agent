@@ -33,6 +33,6 @@ class Llm:
         return self.client.responses.create(
             model=self.model,
             instructions=self.instructions,
-            tools=self.tools,
+            tools=self.tools,  # type: ignore
             input=input,
         )

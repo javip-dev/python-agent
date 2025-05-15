@@ -1,24 +1,30 @@
-import json
 import sys
 from llm import Llm
-from utils import user_msg, assistant_msg
+from utils import user_msg, assistant_msg, get_thread_id, print_output
+import questionary
 
 
 def main():
 
-    if len(sys.argv) != 2:
-        print("no arguments have been passed")
+    thread_id = get_thread_id()
+    if not thread_id:
         sys.exit(1)
 
     llm = Llm()
     llm.set_instructions("you are a sport focus commentator")
-    # llm.set_tools()
-    msg = user_msg(sys.argv[1])
-    response = llm.ask(msg)
-    if response is None:
-        sys.exit(1)
-    print(response.output_text)
-    assistant_msg(response.output_text)
+    print("what can i help with?")
+    while True:
+        user_input = questionary.text("").ask()
+        if user_input == "END":
+            sys.exit(1)
+        print(user_input)
+        # llm.set_tools()
+        llm_input = user_msg(user_input, thread_id)
+        response = llm.ask(llm_input)
+        if response is None:
+            sys.exit(1)
+        assistant_msg(response.output_text, thread_id)
+        print_output(response.output_text)
 
 
 main()
