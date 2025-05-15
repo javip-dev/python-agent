@@ -1,6 +1,7 @@
 import sys
 from llm import Llm
-from utils import user_msg, assistant_msg, get_thread_id, print_output
+from db_service import user_msg, assistant_msg, get_thread_id
+from utils import print_output
 import questionary
 
 
