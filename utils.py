@@ -1,4 +1,4 @@
 def print_output(txt: str):
     print("------------------")
-    print(txt)
+    print(f"Assistant: {txt}")
     print("------------------")
