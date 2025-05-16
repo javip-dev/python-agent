@@ -8,13 +8,15 @@ import questionary
 
 
 def main():
+    if len(sys.argv) == 2:
+        model = sys.argv[1]
 
     thread_id = get_thread_id()
     if not thread_id:
         sys.exit(1)
 
     prompt = get_prompt(thread_id)
-    llm = Llm()
+    llm = Llm(model)
     llm.set_instructions(prompt)
     # llm.set_tools()
     print("what can i help with?")
